@@ -1,9 +1,14 @@
 {
   "name": "worktree-switcher",
-  "displayName": "Git Worktree Switcher",
+  "displayName": "Worktree Switcher (GIT)",
   "description": "Switch git worktrees from the status bar, or jump to a recent folder — always in the current window.",
   "version": "1.0.0",
-  "publisher": "local",
+  "publisher": "SumontaSahaMridul",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sumonta056/worktree-switcher-vscode"
+  },
   "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
