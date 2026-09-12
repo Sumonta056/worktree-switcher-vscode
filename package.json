@@ -127,9 +127,13 @@
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
     "pretest": "npm run compile",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./out/test/runTest.js",
+    "prepare": "husky",
+    "lint:commits": "commitlint --from HEAD~20 --to HEAD"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.3",
+    "@commitlint/config-conventional": "^20.5.3",
     "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "^20.11.0",
@@ -137,6 +141,7 @@
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.9.2",
     "glob": "^11.1.0",
+    "husky": "^9.1.7",
     "mocha": "^12.0.1",
     "typescript": "^5.4.0"
   }
