@@ -1,4 +1,5 @@
 .vscode/**
+.claude/**
 src/**
 **/*.ts
 **/tsconfig.json

@@ -155,9 +155,9 @@ function describe(w: Worktree): string {
     return '(unknown)';
 }
 
-function renderStatusBar(): void {
+function renderWorktreeStatusBar(): void {
     if (!state || state.worktrees.length === 0) {
-        statusBar.hide();
+        worktreeStatusBar.hide();
         return;
     }
 
@@ -167,28 +167,43 @@ function renderStatusBar(): void {
     const branch = cur ? describe(cur) : 'no worktree';
     const folder = cur ? path.basename(cur.path) : '';
 
-    const template = cfg.get<string>('statusBarFormat', '$(list-tree) wt: ${branch}');
-    statusBar.text = template
+    const template = cfg.get<string>('statusBarFormat', '$(git-branch) ${folder} (${branch})');
+    worktreeStatusBar.text = template
         .replace(/\$\{branch\}/g, branch)
         .replace(/\$\{folder\}/g, folder)
         .replace(/\$\{count\}/g, String(count))
         .replace(/\$\{detached\}/g, cur?.detached ? ' (detached)' : '');
 
-    statusBar.backgroundColor = cur?.detached
+    worktreeStatusBar.backgroundColor = cur?.detached
         ? new vscode.ThemeColor('statusBarItem.warningBackground')
         : undefined;
 
     const tip = new vscode.MarkdownString(undefined, true);
-    tip.appendMarkdown(`$(list-tree) **Git Worktree Switcher**\n\n`);
+    tip.appendMarkdown(`$(git-branch) **Git Worktree Switcher**\n\n`);
     if (cur) {
         tip.appendMarkdown(`Branch &nbsp;&nbsp;**${describe(cur)}**${cur.detached ? ' _(detached)_' : ''}\n\n`);
         tip.appendMarkdown(`Folder &nbsp;&nbsp;\`${tildify(cur.path)}\`\n\n`);
     }
     tip.appendMarkdown(`---\n\n`);
     tip.appendMarkdown(`${count} worktree${count === 1 ? '' : 's'} in this repository\n\n`);
-    tip.appendMarkdown(`_Click to switch worktree or open a recent folder_`);
-    statusBar.tooltip = tip;
-    statusBar.show();
+    tip.appendMarkdown(`_Click to switch worktree_`);
+    worktreeStatusBar.tooltip = tip;
+    worktreeStatusBar.show();
+}
+
+function renderRecentStatusBar(): void {
+    const cfg = vscode.workspace.getConfiguration('worktreeSwitcher');
+    recentStatusBar.text = cfg.get<string>('recentStatusBarFormat', '$(history) Recent');
+    const tip = new vscode.MarkdownString(undefined, true);
+    tip.appendMarkdown(`$(history) **Recent Folders**\n\n`);
+    tip.appendMarkdown(`_Click to open a recent folder_`);
+    recentStatusBar.tooltip = tip;
+    recentStatusBar.show();
+}
+
+function renderStatusBar(): void {
+    renderWorktreeStatusBar();
+    renderRecentStatusBar();
 }
 
 function watchHead(): void {
@@ -353,13 +368,6 @@ function worktreeItems(s: RepoState): Item[] {
             alwaysShow: isCurrent
         });
     }
-
-    items.push({ label: 'Elsewhere', kind: vscode.QuickPickItemKind.Separator });
-    items.push({
-        label: '$(history) Open recent folder...',
-        detail: 'Jump to any folder you had open recently — same window',
-        action: 'recent'
-    });
 
     items.push({ label: 'Manage', kind: vscode.QuickPickItemKind.Separator });
     items.push({ label: '$(add) Create new worktree...', action: 'create' });
@@ -686,21 +694,29 @@ export function activate(context: vscode.ExtensionContext): void {
     output = vscode.window.createOutputChannel('Worktree Switcher');
 
     const cfg = vscode.workspace.getConfiguration('worktreeSwitcher');
-    const alignment = cfg.get<string>('statusBarAlignment', 'left') === 'right'
-        ? vscode.StatusBarAlignment.Right
-        : vscode.StatusBarAlignment.Left;
+    const alignmentOf = (key: string, fallback: 'left' | 'right'): vscode.StatusBarAlignment =>
+        cfg.get<string>(key, fallback) === 'right' ? vscode.StatusBarAlignment.Right : vscode.StatusBarAlignment.Left;
 
-    statusBar = vscode.window.createStatusBarItem(
+    worktreeStatusBar = vscode.window.createStatusBarItem(
         'worktreeSwitcher.status',
-        alignment,
+        alignmentOf('statusBarAlignment', 'left'),
         cfg.get<number>('statusBarPriority', 100)
     );
-    statusBar.name = 'Git Worktree Switcher';
-    statusBar.command = 'worktreeSwitcher.switch';
+    worktreeStatusBar.name = 'Git Worktree Switcher';
+    worktreeStatusBar.command = 'worktreeSwitcher.switch';
+
+    recentStatusBar = vscode.window.createStatusBarItem(
+        'worktreeSwitcher.recent',
+        alignmentOf('recentStatusBarAlignment', 'left'),
+        cfg.get<number>('recentStatusBarPriority', 101)
+    );
+    recentStatusBar.name = 'Recent Folders';
+    recentStatusBar.command = 'worktreeSwitcher.openRecent';
 
     context.subscriptions.push(
         output,
-        statusBar,
+        worktreeStatusBar,
+        recentStatusBar,
         vscode.commands.registerCommand('worktreeSwitcher.switch', () => showSwitcher('worktrees')),
         vscode.commands.registerCommand('worktreeSwitcher.openRecent', () => showSwitcher('recent')),
         vscode.commands.registerCommand('worktreeSwitcher.create', createWorktree),
