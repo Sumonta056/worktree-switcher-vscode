@@ -1,0 +1,131 @@
+{
+  "name": "worktree-switcher",
+  "displayName": "Git Worktree Switcher",
+  "description": "Switch git worktrees from the status bar, or jump to a recent folder — always in the current window.",
+  "version": "0.2.0",
+  "publisher": "local",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Other"
+  ],
+  "keywords": [
+    "git",
+    "worktree",
+    "branch",
+    "switch"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "worktreeSwitcher.switch",
+        "title": "Worktree: Switch...",
+        "category": "Worktree"
+      },
+      {
+        "command": "worktreeSwitcher.openRecent",
+        "title": "Worktree: Open Recent Folder...",
+        "category": "Worktree"
+      },
+      {
+        "command": "worktreeSwitcher.create",
+        "title": "Worktree: Create New Worktree...",
+        "category": "Worktree"
+      },
+      {
+        "command": "worktreeSwitcher.remove",
+        "title": "Worktree: Remove Worktree...",
+        "category": "Worktree"
+      },
+      {
+        "command": "worktreeSwitcher.refresh",
+        "title": "Worktree: Refresh Status Bar",
+        "category": "Worktree"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "worktreeSwitcher.switch",
+        "key": "ctrl+alt+w",
+        "mac": "cmd+alt+w"
+      }
+    ],
+    "configuration": {
+      "title": "Git Worktree Switcher",
+      "properties": {
+        "worktreeSwitcher.openInNewWindow": {
+          "type": "boolean",
+          "default": false,
+          "description": "Open the selected worktree in a new window instead of reusing the current one."
+        },
+        "worktreeSwitcher.statusBarAlignment": {
+          "type": "string",
+          "enum": [
+            "left",
+            "right"
+          ],
+          "default": "left",
+          "description": "Which side of the status bar the worktree indicator sits on. Reload the window after changing."
+        },
+        "worktreeSwitcher.statusBarPriority": {
+          "type": "number",
+          "default": 100,
+          "description": "Higher numbers move the indicator further left (for left alignment). Reload the window after changing."
+        },
+        "worktreeSwitcher.recentStatusBarAlignment": {
+          "type": "string",
+          "enum": [
+            "left",
+            "right"
+          ],
+          "default": "left",
+          "description": "Which side of the status bar the recent-folders indicator sits on. Reload the window after changing."
+        },
+        "worktreeSwitcher.recentStatusBarPriority": {
+          "type": "number",
+          "default": 101,
+          "description": "Higher numbers move the indicator further left (for left alignment). Default sits left of the worktree indicator. Reload the window after changing."
+        },
+        "worktreeSwitcher.newWorktreeParentDir": {
+          "type": "string",
+          "default": "",
+          "description": "Default parent directory for newly created worktrees. Empty means a sibling folder next to the main worktree."
+        },
+        "worktreeSwitcher.statusBarFormat": {
+          "type": "string",
+          "default": "$(git-branch) ${folder} (${branch})",
+          "markdownDescription": "Worktree status bar label template. Supports codicons like `$(git-branch)` and the variables `${branch}`, `${folder}`, `${count}`, `${detached}`."
+        },
+        "worktreeSwitcher.recentStatusBarFormat": {
+          "type": "string",
+          "default": "$(history) Recent",
+          "markdownDescription": "Recent-folders status bar label. Supports codicons like `$(history)`. This label is fixed text, not tied to the current folder."
+        },
+        "worktreeSwitcher.showWorktreeStatus": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show uncommitted-change count and ahead/behind counts for each worktree in the picker."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.9.2",
+    "typescript": "^5.4.0"
+  }
+}
