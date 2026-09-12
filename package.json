@@ -128,6 +128,7 @@
     "package": "vsce package",
     "pretest": "npm run compile",
     "test": "node ./out/test/runTest.js",
+    "capture:screenshots": "npm run compile && node ./out/test/captureScreenshots.js",
     "prepare": "husky",
     "lint:commits": "commitlint --from HEAD~20 --to HEAD"
   },

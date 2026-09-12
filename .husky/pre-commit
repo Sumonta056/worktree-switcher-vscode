@@ -1,0 +1,15 @@
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+
+if echo "$staged" | grep -q '^src/extension\.ts$'; then
+    if [ "$(uname)" = "Darwin" ] && command -v screencapture >/dev/null 2>&1 && command -v osascript >/dev/null 2>&1; then
+        echo "worktree-switcher: src/extension.ts changed - recapturing UI screenshots..."
+        if npm run --silent capture:screenshots; then
+            git add images/status-bar.png images/worktree-picker.png
+            echo "worktree-switcher: screenshots updated and staged."
+        else
+            echo "worktree-switcher: automatic screenshot capture failed. Update images/ by hand if the UI changed, then commit again." >&2
+        fi
+    else
+        echo "worktree-switcher: src/extension.ts changed. Automatic screenshot capture only runs on macOS with screencapture/osascript available - update images/ by hand if the UI changed." >&2
+    fi
+fi
