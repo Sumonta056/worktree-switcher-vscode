@@ -4,3 +4,4 @@ src/**
 **/*.ts
 **/tsconfig.json
 .gitignore
+.vscode-test/**
