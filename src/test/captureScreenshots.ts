@@ -24,7 +24,7 @@ function git(args: string[], cwd: string): Promise<string> {
     });
 }
 
-async function setupFixtureRepo(): Promise<{ tmpRoot: string; workspace: string }> {
+async function setupFixtureRepo(): Promise<{ tmpRoot: string; workspace: string; demoRecentFolders: string[] }> {
     const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'wts-capture-'));
     const workspace = path.join(tmpRoot, 'demo');
     fs.mkdirSync(workspace);
@@ -41,7 +41,17 @@ async function setupFixtureRepo(): Promise<{ tmpRoot: string; workspace: string 
         workspace
     );
 
-    return { tmpRoot, workspace };
+    // Plain, unrelated project folders (not worktrees) used only to seed the
+    // isolated test profile's recent-folders list, so the Recent picker
+    // screenshot shows realistic demo content instead of being empty.
+    const demoRecentFolders = ['acme-web', 'field-notes'].map(name => {
+        const p = path.join(tmpRoot, name);
+        fs.mkdirSync(p);
+        fs.writeFileSync(path.join(p, 'README.md'), `# ${name}\n`);
+        return p;
+    });
+
+    return { tmpRoot, workspace, demoRecentFolders };
 }
 
 async function main(): Promise<void> {
@@ -49,13 +59,17 @@ async function main(): Promise<void> {
     const extensionTestsPath = path.resolve(__dirname, './capture/index');
     const imagesDir = path.resolve(__dirname, '../../images');
 
-    const { tmpRoot, workspace } = await setupFixtureRepo();
+    const { tmpRoot, workspace, demoRecentFolders } = await setupFixtureRepo();
     try {
         await runTests({
             extensionDevelopmentPath,
             extensionTestsPath,
             launchArgs: [workspace],
-            extensionTestsEnv: { ...process.env, CAPTURE_OUT_DIR: imagesDir }
+            extensionTestsEnv: {
+                ...process.env,
+                CAPTURE_OUT_DIR: imagesDir,
+                CAPTURE_DEMO_RECENT_FOLDERS: JSON.stringify(demoRecentFolders)
+            }
         });
     } finally {
         fs.rmSync(tmpRoot, { recursive: true, force: true });

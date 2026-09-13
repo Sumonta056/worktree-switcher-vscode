@@ -4,7 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { execFile } from 'child_process';
 
-interface Worktree {
+export interface Worktree {
     path: string;
     head?: string;
     branch?: string;
@@ -22,7 +22,7 @@ interface WorktreeStatus {
     behind: number;
 }
 
-interface RepoState {
+export interface RepoState {
     cwd: string;
     gitDir: string;
     root: string;
@@ -35,6 +35,84 @@ let recentStatusBar: vscode.StatusBarItem;
 let headWatcher: fs.FSWatcher | undefined;
 let state: RepoState | undefined;
 let output: vscode.OutputChannel;
+let extensionContext: vscode.ExtensionContext;
+
+// -------------------------------------------------------------------- pinning
+
+/** Pin identity for a worktree: its branch name, or its path when detached. */
+export function worktreeId(w: Worktree): string {
+    return w.branch ?? w.path;
+}
+
+/** Pin identity for a recent-folder entry: its filesystem path. */
+export function recentId(e: RecentEntry): string {
+    return e.uri.fsPath;
+}
+
+function pinnedWorktreesKey(root: string): string {
+    return `pinnedWorktrees:${root}`;
+}
+
+export function getPinnedWorktrees(context: vscode.ExtensionContext, root: string): Set<string> {
+    return new Set(context.workspaceState.get<string[]>(pinnedWorktreesKey(root), []));
+}
+
+export async function toggleWorktreePin(
+    context: vscode.ExtensionContext,
+    root: string,
+    id: string
+): Promise<Set<string>> {
+    const pins = getPinnedWorktrees(context, root);
+    if (pins.has(id)) { pins.delete(id); } else { pins.add(id); }
+    await context.workspaceState.update(pinnedWorktreesKey(root), [...pins]);
+    return pins;
+}
+
+const RECENT_PINS_KEY = 'pinnedRecentFolders';
+
+export function getPinnedRecentFolders(context: vscode.ExtensionContext): Set<string> {
+    return new Set(context.globalState.get<string[]>(RECENT_PINS_KEY, []));
+}
+
+export async function toggleRecentPin(context: vscode.ExtensionContext, id: string): Promise<Set<string>> {
+    const pins = getPinnedRecentFolders(context);
+    if (pins.has(id)) { pins.delete(id); } else { pins.add(id); }
+    await context.globalState.update(RECENT_PINS_KEY, [...pins]);
+    return pins;
+}
+
+/** Pinned entries first (in existing order), then the rest (in existing order). */
+export function splitByPin<T>(entries: T[], pinned: ReadonlySet<string>, idOf: (t: T) => string): { pinnedList: T[]; rest: T[] } {
+    const pinnedList: T[] = [];
+    const rest: T[] = [];
+    for (const e of entries) {
+        (pinned.has(idOf(e)) ? pinnedList : rest).push(e);
+    }
+    return { pinnedList, rest };
+}
+
+/** Full pinned-then-recency order, matching what the picker shows (used for keyboard slots). */
+export function orderWorktreesByPin(worktrees: Worktree[], pinned: ReadonlySet<string>): Worktree[] {
+    const { pinnedList, rest } = splitByPin(worktrees, pinned, worktreeId);
+    return [...pinnedList, ...rest];
+}
+
+/** Human-readable last-opened detail. Uses a real timestamp when the data provides one; otherwise
+ *  falls back to a relative-order label rather than inventing a time. */
+export function lastOpenedDetail(timestampMs: number | undefined, index: number, now: number = Date.now()): string {
+    if (typeof timestampMs === 'number' && Number.isFinite(timestampMs)) {
+        const diffMs = now - timestampMs;
+        const minute = 60 * 1000;
+        const hour = 60 * minute;
+        const day = 24 * hour;
+        if (diffMs < minute) { return 'just now'; }
+        if (diffMs < hour) { return `${Math.floor(diffMs / minute)} minutes ago`; }
+        if (diffMs < day) { return `${Math.floor(diffMs / hour)} hours ago`; }
+        if (diffMs < 2 * day) { return 'yesterday'; }
+        return `${Math.floor(diffMs / day)} days ago`;
+    }
+    return index === 0 ? 'most recent' : `#${index + 1} most recent`;
+}
 
 // ---------------------------------------------------------------- git helpers
 
@@ -156,6 +234,7 @@ function describe(w: Worktree): string {
 }
 
 function renderWorktreeStatusBar(): void {
+    void vscode.commands.executeCommand('setContext', 'worktreeSwitcher.hasRepo', !!state);
     if (!state || state.worktrees.length === 0) {
         worktreeStatusBar.hide();
         return;
@@ -167,7 +246,7 @@ function renderWorktreeStatusBar(): void {
     const branch = cur ? describe(cur) : 'no worktree';
     const folder = cur ? path.basename(cur.path) : '';
 
-    const template = cfg.get<string>('statusBarFormat', '$(git-branch) ${folder} (${branch})');
+    const template = cfg.get<string>('statusBarFormat', '$(git-branch) ${folder} (${branch}) · ${count} worktrees');
     worktreeStatusBar.text = template
         .replace(/\$\{branch\}/g, branch)
         .replace(/\$\{folder\}/g, folder)
@@ -193,6 +272,10 @@ function renderWorktreeStatusBar(): void {
 
 function renderRecentStatusBar(): void {
     const cfg = vscode.workspace.getConfiguration('worktreeSwitcher');
+    if (!cfg.get<boolean>('showRecentStatusBar', true)) {
+        recentStatusBar.hide();
+        return;
+    }
     recentStatusBar.text = cfg.get<string>('recentStatusBarFormat', '$(history) Recent');
     const tip = new vscode.MarkdownString(undefined, true);
     tip.appendMarkdown(`$(history) **Recent Folders**\n\n`);
@@ -260,9 +343,24 @@ async function openWorktree(target: Worktree, forceNewWindow?: boolean): Promise
     await openFolderPath(vscode.Uri.file(target.path), forceNewWindow);
 }
 
+/** Opens the worktree at position `slot` (1-based) in the same pinned-then-recency
+ *  order the picker shows. No-ops with a brief status bar message if the slot is empty. */
+export async function switchToSlot(slot: number): Promise<void> {
+    await refreshNow();
+    if (!state) { return; }
+    const pins = getPinnedWorktrees(extensionContext, state.root);
+    const ordered = orderWorktreesByPin(state.worktrees, pins);
+    const target = ordered[slot - 1];
+    if (!target) {
+        vscode.window.setStatusBarMessage(`$(info) No worktree in slot ${slot}`, 2500);
+        return;
+    }
+    await openWorktree(target);
+}
+
 // ------------------------------------------------------------- recent folders
 
-interface RecentEntry {
+export interface RecentEntry {
     uri: vscode.Uri;
     label: string;
     isWorkspaceFile: boolean;
@@ -308,7 +406,7 @@ async function getRecentFolders(): Promise<RecentEntry[]> {
 
 type Mode = 'worktrees' | 'recent';
 
-interface Item extends vscode.QuickPickItem {
+export interface Item extends vscode.QuickPickItem {
     worktree?: Worktree;
     recent?: RecentEntry;
     action?: 'create' | 'remove' | 'prune' | 'recent' | 'back';
@@ -327,6 +425,14 @@ const refreshButton: vscode.QuickInputButton = {
     tooltip: 'Refresh'
 };
 const backButton: vscode.QuickInputButton = vscode.QuickInputButtons.Back;
+const pinOnButton: vscode.QuickInputButton = {
+    iconPath: new vscode.ThemeIcon('pinned'),
+    tooltip: 'Unpin'
+};
+const pinOffButton: vscode.QuickInputButton = {
+    iconPath: new vscode.ThemeIcon('pin'),
+    tooltip: 'Pin to top'
+};
 
 function statusBadge(w: Worktree): string {
     if (!w.status) { return ''; }
@@ -338,36 +444,42 @@ function statusBadge(w: Worktree): string {
     return bits.join('  ');
 }
 
-function worktreeItems(s: RepoState): Item[] {
+function worktreeRow(w: Worktree, s: RepoState, isPinned: boolean): Item {
+    const isCurrent = !!s.current && samePath(w.path, s.current.path);
+    const flags: string[] = [];
+    if (w.detached) { flags.push('detached'); }
+    if (w.locked) { flags.push('$(lock) locked'); }
+    if (w.prunable) { flags.push('$(warning) prunable'); }
+    if (w.bare) { flags.push('bare'); }
+
+    const badge = statusBadge(w);
+    const detailBits = [`$(folder) ${tildify(w.path)}`];
+    if (badge) { detailBits.push(badge); }
+    if (flags.length) { detailBits.push(flags.join(' · ')); }
+
+    const pinButton = isPinned ? pinOnButton : pinOffButton;
+
+    return {
+        label: `${isCurrent ? '$(target)' : '$(git-branch)'} ${describe(w)}`,
+        description: isCurrent ? 'current worktree' : '',
+        detail: detailBits.join('   ·   '),
+        worktree: w,
+        buttons: isCurrent ? [pinButton] : [pinButton, newWindowButton],
+        alwaysShow: isCurrent
+    };
+}
+
+export function worktreeItems(s: RepoState, pinned: ReadonlySet<string>): Item[] {
     const items: Item[] = [];
-    const count = s.worktrees.length;
-    items.push({
-        label: `Worktrees · ${count}`,
-        kind: vscode.QuickPickItemKind.Separator
-    });
+    const { pinnedList, rest } = splitByPin(s.worktrees, pinned, worktreeId);
 
-    for (const w of s.worktrees) {
-        const isCurrent = !!s.current && samePath(w.path, s.current.path);
-        const flags: string[] = [];
-        if (w.detached) { flags.push('detached'); }
-        if (w.locked) { flags.push('$(lock) locked'); }
-        if (w.prunable) { flags.push('$(warning) prunable'); }
-        if (w.bare) { flags.push('bare'); }
-
-        const badge = statusBadge(w);
-        const detailBits = [`$(folder) ${tildify(w.path)}`];
-        if (badge) { detailBits.push(badge); }
-        if (flags.length) { detailBits.push(flags.join(' · ')); }
-
-        items.push({
-            label: `${isCurrent ? '$(circle-filled)' : '$(git-branch)'} ${describe(w)}`,
-            description: isCurrent ? 'current worktree' : '',
-            detail: detailBits.join('   ·   '),
-            worktree: w,
-            buttons: isCurrent ? [] : [newWindowButton],
-            alwaysShow: isCurrent
-        });
+    if (pinnedList.length > 0) {
+        items.push({ label: 'Pinned', kind: vscode.QuickPickItemKind.Separator });
+        for (const w of pinnedList) { items.push(worktreeRow(w, s, true)); }
     }
+
+    items.push({ label: `Worktrees · ${rest.length}`, kind: vscode.QuickPickItemKind.Separator });
+    for (const w of rest) { items.push(worktreeRow(w, s, false)); }
 
     items.push({ label: 'Manage', kind: vscode.QuickPickItemKind.Separator });
     items.push({ label: '$(add) Create new worktree...', action: 'create' });
@@ -376,27 +488,59 @@ function worktreeItems(s: RepoState): Item[] {
     return items;
 }
 
-function recentItems(entries: RecentEntry[], s: RepoState | undefined): Item[] {
-    if (entries.length === 0) {
+function recentRow(e: RecentEntry, s: RepoState | undefined, isPinned: boolean, index: number): Item {
+    const isCurrent = !!s && samePath(e.uri.fsPath, s.root);
+    const icon = e.isWorkspaceFile ? '$(file-code)' : '$(folder)';
+    const missing = !e.isWorkspaceFile && !fs.existsSync(e.uri.fsPath);
+    const timeDetail = lastOpenedDetail(undefined, index);
+    const pinButton = isPinned ? pinOnButton : pinOffButton;
+
+    return {
+        label: `${icon} ${e.label}`,
+        description: isCurrent ? 'current' : '',
+        detail: `${missing ? '$(warning) missing · ' : ''}${tildify(e.uri.fsPath)} · ${timeDetail}`,
+        recent: e,
+        buttons: [pinButton, newWindowButton]
+    };
+}
+
+/** True when `folderPath` is a linked git worktree of any repository.
+ *  A plain repository has `.git` as a directory; a linked worktree has
+ *  `.git` as a file holding a `gitdir:` pointer. */
+export function isGitWorktreeFolder(folderPath: string): boolean {
+    try {
+        return fs.statSync(path.join(folderPath, '.git')).isFile();
+    } catch {
+        return false;
+    }
+}
+
+/** Excludes entries that are git worktrees — either a worktree of the
+ *  currently open repository, or a linked worktree of any other repository.
+ *  Worktrees already have a home in the Worktree picker (see requirement:
+ *  two separate features, no duplicate entries). */
+export function filterOutWorktrees(entries: RecentEntry[], s: RepoState | undefined): RecentEntry[] {
+    return entries.filter(e => {
+        if (s && s.worktrees.some(w => samePath(w.path, e.uri.fsPath))) { return false; }
+        return !isGitWorktreeFolder(e.uri.fsPath);
+    });
+}
+
+export function recentItems(entries: RecentEntry[], pinned: ReadonlySet<string>, s: RepoState | undefined): Item[] {
+    const filtered = filterOutWorktrees(entries, s);
+    if (filtered.length === 0) {
         return [{ label: '$(info) No recent folders', alwaysShow: true }];
     }
     const items: Item[] = [];
-    items.push({ label: `Recent folders · ${entries.length}`, kind: vscode.QuickPickItemKind.Separator });
+    const { pinnedList, rest } = splitByPin(filtered, pinned, recentId);
 
-    for (const e of entries) {
-        const isCurrent = !!s && samePath(e.uri.fsPath, s.root);
-        const belongsToRepo = !!s && s.worktrees.some(w => samePath(w.path, e.uri.fsPath));
-        const icon = e.isWorkspaceFile ? '$(file-code)' : belongsToRepo ? '$(list-tree)' : '$(folder)';
-        const missing = !e.isWorkspaceFile && !fs.existsSync(e.uri.fsPath);
-
-        items.push({
-            label: `${icon} ${e.label}`,
-            description: isCurrent ? 'current' : belongsToRepo ? 'worktree of this repo' : '',
-            detail: `${missing ? '$(warning) missing · ' : ''}${tildify(e.uri.fsPath)}`,
-            recent: e,
-            buttons: [newWindowButton]
-        });
+    if (pinnedList.length > 0) {
+        items.push({ label: 'Pinned', kind: vscode.QuickPickItemKind.Separator });
+        pinnedList.forEach((e, i) => items.push(recentRow(e, s, true, i)));
     }
+
+    items.push({ label: `Recent folders · ${rest.length}`, kind: vscode.QuickPickItemKind.Separator });
+    rest.forEach((e, i) => items.push(recentRow(e, s, false, i)));
     return items;
 }
 
@@ -418,7 +562,7 @@ async function showSwitcher(initialMode: Mode = 'worktrees'): Promise<void> {
             pick.title = `Git worktrees — ${path.basename(state.worktrees[0]?.path ?? state.root)}`;
             pick.placeholder = 'Pick a worktree to open in this window';
             pick.buttons = [createButton, refreshButton];
-            pick.items = worktreeItems(state);
+            pick.items = worktreeItems(state, getPinnedWorktrees(extensionContext, state.root));
         } else {
             pick.title = 'Open recent folder';
             pick.placeholder = 'Pick a folder to open in this window';
@@ -428,7 +572,7 @@ async function showSwitcher(initialMode: Mode = 'worktrees'): Promise<void> {
                 recents = await getRecentFolders();
                 pick.busy = false;
             }
-            pick.items = recentItems(recents, state);
+            pick.items = recentItems(recents, getPinnedRecentFolders(extensionContext), state);
         }
     };
 
@@ -444,7 +588,7 @@ async function showSwitcher(initialMode: Mode = 'worktrees'): Promise<void> {
         pick.busy = false;
         if (!disposed && mode === 'worktrees') {
             const active = pick.activeItems[0];
-            pick.items = worktreeItems(state);
+            pick.items = worktreeItems(state, getPinnedWorktrees(extensionContext, state.root));
             const again = pick.items.find(i => i.worktree && active?.worktree &&
                 samePath(i.worktree.path, active.worktree.path));
             if (again) { pick.activeItems = [again]; }
@@ -458,6 +602,15 @@ async function showSwitcher(initialMode: Mode = 'worktrees'): Promise<void> {
     });
 
     pick.onDidTriggerItemButton(async e => {
+        if (e.button === pinOnButton || e.button === pinOffButton) {
+            if (e.item.worktree && state) {
+                await toggleWorktreePin(extensionContext, state.root, worktreeId(e.item.worktree));
+            } else if (e.item.recent) {
+                await toggleRecentPin(extensionContext, recentId(e.item.recent));
+            }
+            await render();
+            return;
+        }
         if (e.button !== newWindowButton) { return; }
         pick.hide();
         if (e.item.worktree) { await openWorktree(e.item.worktree, true); }
@@ -691,6 +844,7 @@ async function pruneWorktrees(): Promise<void> {
 // -------------------------------------------------------------------- activate
 
 export function activate(context: vscode.ExtensionContext): void {
+    extensionContext = context;
     output = vscode.window.createOutputChannel('Worktree Switcher');
 
     const cfg = vscode.workspace.getConfiguration('worktreeSwitcher');
@@ -731,7 +885,34 @@ export function activate(context: vscode.ExtensionContext): void {
         { dispose: () => headWatcher?.close() }
     );
 
+    for (let slot = 1; slot <= 9; slot++) {
+        context.subscriptions.push(
+            vscode.commands.registerCommand(`worktreeSwitcher.switchToSlot${slot}`, () => switchToSlot(slot))
+        );
+    }
+
     void refreshNow();
+    void maybeAskAboutRecentStatusBar(context);
+}
+
+const RECENT_PREF_ASKED_KEY = 'worktreeSwitcher.askedRecentPref';
+
+async function maybeAskAboutRecentStatusBar(context: vscode.ExtensionContext): Promise<void> {
+    if (context.globalState.get<boolean>(RECENT_PREF_ASKED_KEY)) {
+        return;
+    }
+    const choice = await vscode.window.showInformationMessage(
+        'Worktree Switcher can show a "Recent Folders" item in the status bar. Show it?',
+        'Show it',
+        'Hide it'
+    );
+    await context.globalState.update(RECENT_PREF_ASKED_KEY, true);
+    if (choice === 'Hide it') {
+        await vscode.workspace.getConfiguration('worktreeSwitcher')
+            .update('showRecentStatusBar', false, vscode.ConfigurationTarget.Global);
+        renderRecentStatusBar();
+    }
+    // "Show it", or the prompt dismissed with no choice, keeps the default (true) as-is.
 }
 
 export function deactivate(): void {

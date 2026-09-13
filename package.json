@@ -53,6 +53,60 @@
         "command": "worktreeSwitcher.refresh",
         "title": "Worktree: Refresh Status Bar",
         "category": "Worktree"
+      },
+      {
+        "command": "worktreeSwitcher.switchToSlot1",
+        "title": "Worktree: Switch to Slot 1",
+        "category": "Worktree",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "worktreeSwitcher.switchToSlot2",
+        "title": "Worktree: Switch to Slot 2",
+        "category": "Worktree",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "worktreeSwitcher.switchToSlot3",
+        "title": "Worktree: Switch to Slot 3",
+        "category": "Worktree",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "worktreeSwitcher.switchToSlot4",
+        "title": "Worktree: Switch to Slot 4",
+        "category": "Worktree",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "worktreeSwitcher.switchToSlot5",
+        "title": "Worktree: Switch to Slot 5",
+        "category": "Worktree",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "worktreeSwitcher.switchToSlot6",
+        "title": "Worktree: Switch to Slot 6",
+        "category": "Worktree",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "worktreeSwitcher.switchToSlot7",
+        "title": "Worktree: Switch to Slot 7",
+        "category": "Worktree",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "worktreeSwitcher.switchToSlot8",
+        "title": "Worktree: Switch to Slot 8",
+        "category": "Worktree",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "worktreeSwitcher.switchToSlot9",
+        "title": "Worktree: Switch to Slot 9",
+        "category": "Worktree",
+        "icon": "$(arrow-swap)"
       }
     ],
     "keybindings": [
@@ -60,6 +114,36 @@
         "command": "worktreeSwitcher.switch",
         "key": "ctrl+alt+w",
         "mac": "cmd+alt+w"
+      },
+      {
+        "command": "worktreeSwitcher.switchToSlot1",
+        "key": "ctrl+shift+1",
+        "mac": "cmd+shift+1",
+        "when": "worktreeSwitcher.hasRepo"
+      },
+      {
+        "command": "worktreeSwitcher.switchToSlot2",
+        "key": "ctrl+shift+2",
+        "mac": "cmd+shift+2",
+        "when": "worktreeSwitcher.hasRepo"
+      },
+      {
+        "command": "worktreeSwitcher.switchToSlot3",
+        "key": "ctrl+shift+3",
+        "mac": "cmd+shift+3",
+        "when": "worktreeSwitcher.hasRepo"
+      },
+      {
+        "command": "worktreeSwitcher.switchToSlot4",
+        "key": "ctrl+shift+4",
+        "mac": "cmd+shift+4",
+        "when": "worktreeSwitcher.hasRepo"
+      },
+      {
+        "command": "worktreeSwitcher.switchToSlot5",
+        "key": "ctrl+shift+5",
+        "mac": "cmd+shift+5",
+        "when": "worktreeSwitcher.hasRepo"
       }
     ],
     "configuration": {
@@ -105,7 +189,7 @@
         },
         "worktreeSwitcher.statusBarFormat": {
           "type": "string",
-          "default": "$(git-branch) ${folder} (${branch})",
+          "default": "$(git-branch) ${folder} (${branch}) · ${count} worktrees",
           "markdownDescription": "Worktree status bar label template. Supports codicons like `$(git-branch)` and the variables `${branch}`, `${folder}`, `${count}`, `${detached}`."
         },
         "worktreeSwitcher.recentStatusBarFormat": {
@@ -117,6 +201,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show uncommitted-change count and ahead/behind counts for each worktree in the picker."
+        },
+        "worktreeSwitcher.showRecentStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the recent-folders item in the status bar. The \"Worktree: Open Recent Folder...\" command stays available either way. On first activation the extension asks about this once."
         }
       }
     }
