@@ -2,7 +2,7 @@
   "name": "worktree-switcher",
   "displayName": "Worktree Switcher (GIT)",
   "description": "Switch git worktrees from the status bar, or jump to a recent folder — always in the current window.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "SumontaSahaMridul",
   "icon": "icon.png",
   "repository": {

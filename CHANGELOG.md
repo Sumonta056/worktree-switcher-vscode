@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-13
+
+### Added
+
+- Pin worktrees to the top of the worktree picker (stored per repository).
+- Pin recent folders to the top of the recent-folders picker.
+- `worktreeSwitcher.switchToSlot1` through `switchToSlot9` commands, with
+  default keybindings for slots 1-5 (`Cmd/Ctrl+Shift+1` through `+5`).
+- `worktreeSwitcher.showRecentStatusBar` setting, with a first-run prompt
+  that asks whether to show the Recent Folders status bar item.
+- Automated UI screenshot capture (`npm run capture:screenshots`) used to
+  keep `README.md` screenshots current for each release.
+
+### Changed
+
+- The recent-folders picker no longer lists folders that are already
+  worktrees of the open repository.
+- The currently open worktree now shows a distinct icon in the picker.
+- Default worktree status bar format now shows the worktree count.
+
 ## [1.0.0] - 2026-09-12
 
 ### Changed

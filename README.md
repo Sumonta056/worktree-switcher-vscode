@@ -6,6 +6,37 @@ The status bar shows the branch of your current worktree. Click it to open a pic
 every worktree in the repository. Choosing one **reopens it in the current window** — no
 new window unless you ask for it.
 
+- ⚡ Switch between worktrees directly from the bottom status bar
+- 🌿 See worktree name, branch, and total worktree count at a glance
+- 📊 View ahead/behind status for each worktree
+- ➕ Create a worktree from any branch
+- 🗑️ Remove worktrees directly from the picker
+- 📌 Pin favorite worktrees and recent folders
+- ⌨️ Jump directly between worktrees with Cmd/Ctrl + Shift + 1–9
+- 🕘 Quickly switch between recently opened folders
+- 🗓️ See when a recent folder was last opened, e.g. "3 hours ago"
+- 💾 Pins persist across VS Code restarts
+
+## Screenshots
+
+**Status bar** — two separate chips: the active worktree branch on the left, and a
+"Recent" chip for recently opened folders next to it.
+
+![Status bar worktree and recent chips](images/status-bar.png)
+
+**Worktree picker** — pick any worktree in the repository, with dirty and clean status
+shown per row.
+
+![Worktree picker](images/worktree-picker.png)
+
+**Recent folders picker** — plain project folders only. Worktrees never appear here;
+they have their own picker above.
+
+![Recent folders picker](images/recent-picker.png)
+
+A short demo video is available on the author's YouTube channel:
+[Code Career Golpo](https://www.youtube.com/@codecareergolpo5638).
+
 ## Features
 
 - **See your branch at a glance.** The status bar shows the branch of your current
@@ -38,25 +69,6 @@ new window unless you ask for it.
 - **Always up to date.** The status bar refreshes automatically on branch change,
   window focus, and editor change.
 
-## Screenshots
-
-**Status bar** — two separate chips: the active worktree branch on the left, and a
-"Recent" chip for recently opened folders next to it.
-
-![Status bar worktree and recent chips](images/status-bar.png)
-
-**Worktree picker** — pick any worktree in the repository, with dirty and clean status
-shown per row.
-
-![Worktree picker](images/worktree-picker.png)
-
-**Recent folders picker** — plain project folders only. Worktrees never appear here;
-they have their own picker above.
-
-![Recent folders picker](images/recent-picker.png)
-
-A short demo video is available on the author's YouTube channel:
-[Code Career Golpo](https://www.youtube.com/@codecareergolpo5638).
 
 ## Commands
 
