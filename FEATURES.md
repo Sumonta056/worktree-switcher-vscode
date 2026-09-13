@@ -45,3 +45,25 @@
 | `worktreeSwitcher.recentStatusBarFormat` | `$(history) Recent` | Recent-folders label. Fixed text, not tied to any folder. |
 | `worktreeSwitcher.showWorktreeStatus` | `true` | Dirty count + ahead/behind per worktree in the picker. |
 | `worktreeSwitcher.newWorktreeParentDir` | `""` | Default parent folder for new worktrees. |
+
+## Planned (not yet built)
+
+The features below are specified in `FEATURE_REQUEST_UI_V2.md` but do
+not exist in the code yet. This section is a roadmap, not a
+description of current behavior.
+
+- **Pin worktrees to the top** of the worktree picker, saved per
+  repository so pins survive a restart.
+- **Pin recent folders to the top** of the recent-folders picker,
+  saved globally and independent of worktree pins.
+- **Recent picker excludes current-repo worktrees** — a folder that is
+  a worktree of the open repository will only appear in the worktree
+  picker, not in Recent as well.
+- **Last-opened time** shown on every row of the recent-folders picker
+  (for example `3 hours ago`).
+- **A distinct icon for the currently open worktree**, separate from
+  the clean/dirty icons used for the rest of the list.
+- **Keyboard slots** (`worktreeSwitcher.switchToSlot1` through
+  `...Slot9`) to jump straight to a worktree by its position in the
+  picker, with default keybindings `Cmd+Shift+1`…`9` /
+  `Ctrl+Shift+1`…`9`, rebindable like any other VS Code shortcut.

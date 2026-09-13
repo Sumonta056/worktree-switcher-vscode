@@ -8,21 +8,28 @@ new window unless you ask for it.
 
 ## Features
 
-- Status bar item reads `⧉ wt: feature/checkout`. The `wt:` prefix and tree icon make it
-clear this is the worktree switcher, not the plain branch indicator. You can customize
-the format with `worktreeSwitcher.statusBarFormat`.
-- Titled picker (`Git worktrees — my-repo`) with grouped sections: **Worktrees**,
-**Elsewhere**, and **Manage**.
-- Each worktree row shows the branch, folder path, dirty-file count, and ahead/behind
-counts. These load in the background, so the picker opens instantly.
-- **Open recent folder...** swaps the same picker into a recent-folders list, with a back
-button. Folders that belong to the current repository are tagged as worktrees.
-- Everything opens in the **current window** by default. The ⧉ button on a row opens it in
-a new window.
-- Create a worktree from a local branch, a remote branch, or a new branch.
-- Remove a worktree, with a force fallback, and prune stale worktrees.
-- Detached HEAD state turns the status bar item orange.
-- The status bar refreshes on branch change, on window focus, and on editor change.
+- **See your branch at a glance.** The status bar shows the branch of your current
+  worktree, for example `⧉ wt: feature/checkout`. You can change the text with
+  `worktreeSwitcher.statusBarFormat`.
+- **Switch worktrees in one click.** Click the status bar item, or press
+  `Ctrl+Alt+W` (`Cmd+Alt+W` on macOS), to open a picker of every worktree in the
+  repository.
+- **See status before you switch.** Each worktree row shows its branch, folder path,
+  how many files changed, and how far it is ahead or behind its remote. This loads in
+  the background, so the picker opens instantly.
+- **Jump to a recent folder too.** A separate action opens a list of folders you had
+  open recently. Any folder that belongs to the current repository is tagged as a
+  worktree.
+- **Stay in the same window.** Everything opens in your current window by default.
+  Click the ⧉ button on a row to open it in a new window instead.
+- **Create a worktree in a few clicks**, from a local branch, a remote branch, or a
+  brand new branch.
+- **Remove or clean up worktrees safely.** Remove one (with a force option if it has
+  changes), or prune every stale worktree at once.
+- **Notice when you are in a detached state.** The status bar turns orange when the
+  current worktree has no branch checked out.
+- **Always up to date.** The status bar refreshes automatically on branch change,
+  window focus, and editor change.
 
 ## Screenshots
 

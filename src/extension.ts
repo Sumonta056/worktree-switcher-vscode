@@ -193,6 +193,10 @@ function renderWorktreeStatusBar(): void {
 
 function renderRecentStatusBar(): void {
     const cfg = vscode.workspace.getConfiguration('worktreeSwitcher');
+    if (!cfg.get<boolean>('showRecentStatusBar', true)) {
+        recentStatusBar.hide();
+        return;
+    }
     recentStatusBar.text = cfg.get<string>('recentStatusBarFormat', '$(history) Recent');
     const tip = new vscode.MarkdownString(undefined, true);
     tip.appendMarkdown(`$(history) **Recent Folders**\n\n`);
@@ -732,6 +736,27 @@ export function activate(context: vscode.ExtensionContext): void {
     );
 
     void refreshNow();
+    void maybeAskAboutRecentStatusBar(context);
+}
+
+const RECENT_PREF_ASKED_KEY = 'worktreeSwitcher.askedRecentPref';
+
+async function maybeAskAboutRecentStatusBar(context: vscode.ExtensionContext): Promise<void> {
+    if (context.globalState.get<boolean>(RECENT_PREF_ASKED_KEY)) {
+        return;
+    }
+    const choice = await vscode.window.showInformationMessage(
+        'Worktree Switcher can show a "Recent Folders" item in the status bar. Show it?',
+        'Show it',
+        'Hide it'
+    );
+    await context.globalState.update(RECENT_PREF_ASKED_KEY, true);
+    if (choice === 'Hide it') {
+        await vscode.workspace.getConfiguration('worktreeSwitcher')
+            .update('showRecentStatusBar', false, vscode.ConfigurationTarget.Global);
+        renderRecentStatusBar();
+    }
+    // "Show it", or the prompt dismissed with no choice, keeps the default (true) as-is.
 }
 
 export function deactivate(): void {

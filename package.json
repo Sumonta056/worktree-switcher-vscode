@@ -117,6 +117,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show uncommitted-change count and ahead/behind counts for each worktree in the picker."
+        },
+        "worktreeSwitcher.showRecentStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the recent-folders item in the status bar. The \"Worktree: Open Recent Folder...\" command stays available either way. On first activation the extension asks about this once."
         }
       }
     }
