@@ -18,8 +18,15 @@ new window unless you ask for it.
   how many files changed, and how far it is ahead or behind its remote. This loads in
   the background, so the picker opens instantly.
 - **Jump to a recent folder too.** A separate action opens a list of folders you had
-  open recently. Any folder that belongs to the current repository is tagged as a
-  worktree.
+  open recently. Folders that are worktrees of the current repository are left out —
+  they already have a home in the worktree picker.
+- **Pin what you use most.** Click the pin button on any worktree or recent-folder row
+  to keep it at the top of its picker. Worktree pins are saved per repository; recent-folder
+  pins are saved globally, and the two never affect each other.
+- **Jump straight to a worktree with the keyboard.** `Ctrl+Shift+1`…`5` (`Cmd+Shift+1`…`5`
+  on macOS) open the 1st through 5th row of the worktree picker (pinned rows first). Every
+  slot from 1 to 9 exists as a command even if only 1-5 have a default key — rebind or add
+  more from `keybindings.json` like any other VS Code shortcut.
 - **Stay in the same window.** Everything opens in your current window by default.
   Click the ⧉ button on a row to open it in a new window instead.
 - **Create a worktree in a few clicks**, from a local branch, a remote branch, or a
@@ -56,6 +63,17 @@ A short demo video is available on the author's YouTube channel:
 | `Worktree: Create New Worktree...` | —                          |
 | `Worktree: Remove Worktree...`     | —                          |
 | `Worktree: Refresh Status Bar`     | —                          |
+| `Worktree: Switch to Slot 1`       | `Ctrl+Shift+1` / `Cmd+Shift+1` |
+| `Worktree: Switch to Slot 2`       | `Ctrl+Shift+2` / `Cmd+Shift+2` |
+| `Worktree: Switch to Slot 3`       | `Ctrl+Shift+3` / `Cmd+Shift+3` |
+| `Worktree: Switch to Slot 4`       | `Ctrl+Shift+4` / `Cmd+Shift+4` |
+| `Worktree: Switch to Slot 5`       | `Ctrl+Shift+5` / `Cmd+Shift+5` |
+| `Worktree: Switch to Slot 6` … `9` | — (no default; rebind yourself if you need more than 5) |
+
+Slot commands open the worktree at that position in the picker's pinned-then-recency
+order — slot 1 is the first row you would see, slot 2 the second, and so on. All of
+these are **default** bindings, not fixed ones: rebind or disable any of them from
+`keybindings.json` if they clash with something else on your machine.
 
 
 ## Settings
@@ -66,7 +84,7 @@ A short demo video is available on the author's YouTube channel:
 | `worktreeSwitcher.openInNewWindow`      | `false`                      | Always open the chosen worktree in a new window.                                |
 | `worktreeSwitcher.statusBarAlignment`   | `left`                       | Place the status bar item on the `left` or `right` side.                        |
 | `worktreeSwitcher.statusBarPriority`    | `100`                        | Higher value moves the item further left.                                       |
-| `worktreeSwitcher.statusBarFormat`      | `$(list-tree) wt: ${branch}` | Label template. Variables: `${branch}`, `${folder}`, `${count}`, `${detached}`. |
+| `worktreeSwitcher.statusBarFormat`      | `$(git-branch) ${folder} (${branch}) · ${count} worktrees` | Label template. Variables: `${branch}`, `${folder}`, `${count}`, `${detached}`. |
 | `worktreeSwitcher.showWorktreeStatus`   | `true`                       | Show dirty count and ahead/behind counts per worktree in the picker.            |
 | `worktreeSwitcher.newWorktreeParentDir` | `""`                         | Default parent folder for new worktrees.                                        |
 
