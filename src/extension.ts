@@ -504,16 +504,30 @@ function recentRow(e: RecentEntry, s: RepoState | undefined, isPinned: boolean, 
     };
 }
 
-/** Excludes entries whose path is a worktree of the currently open repository —
- *  those already have a home in the Worktree picker (see requirement: two
- *  separate features, no duplicate entries). */
-export function filterOutCurrentRepoWorktrees(entries: RecentEntry[], s: RepoState | undefined): RecentEntry[] {
-    if (!s) { return entries; }
-    return entries.filter(e => !s.worktrees.some(w => samePath(w.path, e.uri.fsPath)));
+/** True when `folderPath` is a linked git worktree of any repository.
+ *  A plain repository has `.git` as a directory; a linked worktree has
+ *  `.git` as a file holding a `gitdir:` pointer. */
+export function isGitWorktreeFolder(folderPath: string): boolean {
+    try {
+        return fs.statSync(path.join(folderPath, '.git')).isFile();
+    } catch {
+        return false;
+    }
+}
+
+/** Excludes entries that are git worktrees — either a worktree of the
+ *  currently open repository, or a linked worktree of any other repository.
+ *  Worktrees already have a home in the Worktree picker (see requirement:
+ *  two separate features, no duplicate entries). */
+export function filterOutWorktrees(entries: RecentEntry[], s: RepoState | undefined): RecentEntry[] {
+    return entries.filter(e => {
+        if (s && s.worktrees.some(w => samePath(w.path, e.uri.fsPath))) { return false; }
+        return !isGitWorktreeFolder(e.uri.fsPath);
+    });
 }
 
 export function recentItems(entries: RecentEntry[], pinned: ReadonlySet<string>, s: RepoState | undefined): Item[] {
-    const filtered = filterOutCurrentRepoWorktrees(entries, s);
+    const filtered = filterOutWorktrees(entries, s);
     if (filtered.length === 0) {
         return [{ label: '$(info) No recent folders', alwaysShow: true }];
     }

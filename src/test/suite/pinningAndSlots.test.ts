@@ -15,9 +15,12 @@ import {
     orderWorktreesByPin,
     worktreeItems,
     recentItems,
-    filterOutCurrentRepoWorktrees,
+    filterOutWorktrees,
+    isGitWorktreeFolder,
     lastOpenedDetail
 } from '../../extension';
+import * as fs from 'fs';
+import * as os from 'os';
 
 /**
  * A minimal in-memory stand-in for vscode.Memento, so pin-persistence tests
@@ -184,19 +187,19 @@ suite('recent-folder pin persistence (globalState, not per repository)', () => {
 });
 
 suite('recent picker excludes current-repo worktrees', () => {
-    test('filterOutCurrentRepoWorktrees drops entries matching a worktree path', () => {
+    test('filterOutWorktrees drops entries matching a worktree path', () => {
         const w1 = wt('/repo-main', 'main');
         const w2 = wt('/repo-feature', 'feature');
         const state = repoState([w1, w2]);
         const entries = [recent('/repo-main'), recent('/repo-feature'), recent('/some/other/folder')];
 
-        const filtered = filterOutCurrentRepoWorktrees(entries, state);
-        assert.deepStrictEqual(filtered.map(e => e.uri.fsPath), [path.resolve('/some/other/folder')]);
+        const filtered = filterOutWorktrees(entries, state);
+        assert.deepStrictEqual(filtered.map((e: RecentEntry) => e.uri.fsPath), [path.resolve('/some/other/folder')]);
     });
 
     test('keeps everything when there is no open repository', () => {
         const entries = [recent('/a'), recent('/b')];
-        assert.strictEqual(filterOutCurrentRepoWorktrees(entries, undefined).length, 2);
+        assert.strictEqual(filterOutWorktrees(entries, undefined).length, 2);
     });
 
     test('recentItems shows the info row when everything was filtered out', () => {
@@ -217,6 +220,68 @@ suite('recent picker excludes current-repo worktrees', () => {
         assert.ok(pinnedSepIdx !== -1);
         const bRow = items.find(i => i.recent === b)!;
         assert.ok(items.indexOf(bRow) > pinnedSepIdx);
+    });
+
+    test('filterOutWorktrees also drops any folder that is itself a linked git worktree, of any repo', () => {
+        const linkedWorktreeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wt-switcher-linked-'));
+        const plainRepoDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wt-switcher-plain-'));
+        try {
+            // A linked worktree's checkout has a `.git` FILE (not a directory) pointing
+            // back at the main repo's gitdir.
+            fs.writeFileSync(path.join(linkedWorktreeDir, '.git'), 'gitdir: /somewhere/else\n');
+            // A normal, non-worktree project has a real `.git` directory.
+            fs.mkdirSync(path.join(plainRepoDir, '.git'));
+
+            const linkedEntry = recent(linkedWorktreeDir);
+            const plainEntry = recent(plainRepoDir);
+            const entries = [linkedEntry, plainEntry];
+
+            // Case 1: no open repository at all (s === undefined) — still applies the
+            // general "is this folder itself a linked worktree" rule.
+            const filteredNoState = filterOutWorktrees(entries, undefined);
+            assert.deepStrictEqual(filteredNoState.map((e: RecentEntry) => e.uri.fsPath), [plainEntry.uri.fsPath]);
+
+            // Case 2: an open repository whose worktrees don't match either path —
+            // the exclusion must still come from the linked-worktree check, not the
+            // current-repo-worktree check.
+            const state = repoState([wt('/unrelated-repo', 'main')]);
+            const filteredWithState = filterOutWorktrees(entries, state);
+            assert.deepStrictEqual(filteredWithState.map((e: RecentEntry) => e.uri.fsPath), [plainEntry.uri.fsPath]);
+        } finally {
+            fs.rmSync(linkedWorktreeDir, { recursive: true, force: true });
+            fs.rmSync(plainRepoDir, { recursive: true, force: true });
+        }
+    });
+});
+
+suite('isGitWorktreeFolder', () => {
+    test('true when the folder has a .git FILE (linked worktree checkout)', () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wt-switcher-isgit-file-'));
+        try {
+            fs.writeFileSync(path.join(dir, '.git'), 'gitdir: /somewhere/else\n');
+            assert.strictEqual(isGitWorktreeFolder(dir), true);
+        } finally {
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    test('false when the folder has a .git DIRECTORY (normal repo, not a worktree)', () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wt-switcher-isgit-dir-'));
+        try {
+            fs.mkdirSync(path.join(dir, '.git'));
+            assert.strictEqual(isGitWorktreeFolder(dir), false);
+        } finally {
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    test('false when the folder has no .git at all', () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wt-switcher-isgit-none-'));
+        try {
+            assert.strictEqual(isGitWorktreeFolder(dir), false);
+        } finally {
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
     });
 });
 

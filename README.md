@@ -40,15 +40,20 @@ new window unless you ask for it.
 
 ## Screenshots
 
-**Recent folders picker** — the status bar chip shows the active worktree branch at a
-glance.
+**Status bar** — two separate chips: the active worktree branch on the left, and a
+"Recent" chip for recently opened folders next to it.
 
-![Status bar worktree chip](images/status-bar.png)
+![Status bar worktree and recent chips](images/status-bar.png)
 
 **Worktree picker** — pick any worktree in the repository, with dirty and clean status
 shown per row.
 
 ![Worktree picker](images/worktree-picker.png)
+
+**Recent folders picker** — plain project folders only. Worktrees never appear here;
+they have their own picker above.
+
+![Recent folders picker](images/recent-picker.png)
 
 A short demo video is available on the author's YouTube channel:
 [Code Career Golpo](https://www.youtube.com/@codecareergolpo5638).
